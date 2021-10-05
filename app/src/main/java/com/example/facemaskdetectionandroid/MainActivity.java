@@ -5,6 +5,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
@@ -67,9 +70,40 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
 
-//        detectMaskFromImage();
+
+        imageBitmap = drawBBOX(detectMaskFromImage(), imageBitmap);
+        imageView.setImageBitmap(imageBitmap);
 
 
+
+    }
+
+    private Bitmap drawBBOX(ArrayList<Result> results, Bitmap bitmap) {
+
+        for (Result result: results){
+
+            Canvas canvas = new Canvas(bitmap);
+            // painting options for the rectangles
+            Paint paint = new Paint();
+            paint.setAlpha(0xA0); // the transparency
+            paint.setColor(Color.RED); // color is red
+            paint.setStyle(Paint.Style.STROKE); // stroke or fill or ...
+            paint.setStrokeWidth(5); // the stroke width
+            // The rectangle will be draw / painted from point (0,0) to point (10,20).
+            // draw that rectangle on the canvas
+            canvas.drawRect(result.rect, paint);
+            // create Paint Object for Writing text on bbox
+            Paint textPaint = new Paint();
+            textPaint.setColor(Color.WHITE);
+            textPaint.setTextSize((float) 10.9);
+            textPaint.setFakeBoldText(true);
+            textPaint.setTextSize(20);
+            canvas.drawText(result.classIndex + " " + result.score, result.rect.left, result.rect.top, textPaint);
+
+
+        }
+
+        return bitmap ;
 
     }
 
@@ -103,22 +137,16 @@ public class MainActivity extends AppCompatActivity {
             resultArrayList.add(result);
         }
 
-        final ArrayList<Result> results = PrePostProcessor.nonMaxSuppression(resultArrayList, 10, (float) 0.3);
+        final ArrayList<Result> results = PrePostProcessor.nonMaxSuppression(resultArrayList, 2, (float) 0.8);
 
-        Log.d(TAG, "detectMaskFromImage: "+Arrays.toString(resultArrayList.toArray()));
-        Log.d(TAG, "detectMaskFromImage: "+Arrays.toString(results.toArray()));
-
-        resultView.setResults(resultArrayList);
-
-
-        return resultArrayList;
+        return results;
     }
 
     private Bitmap loadImage(String imageFile){
         Bitmap bitmap = null;
         try {
            bitmap  = BitmapFactory.decodeStream(getAssets().open(imageFile));
-//           bitmap =  Bitmap.createScaledBitmap(bitmap, 512, 512, false);
+           bitmap =  Bitmap.createScaledBitmap(bitmap, 512, 512, false);
         } catch (IOException e) {
             e.printStackTrace();
             Toast.makeText(MainActivity.this, "BitMap Null", Toast.LENGTH_LONG).show();
