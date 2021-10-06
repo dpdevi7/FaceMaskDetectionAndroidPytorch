@@ -7,6 +7,7 @@
 package com.example.facemaskdetectionandroid;
 
 import android.graphics.Rect;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,6 +51,7 @@ public class PrePostProcessor {
     private static int mNmsLimit = 15;
 
     static String[] mClasses;
+    static final String TAG = "PrePostProcessor";
 
     // The two methods nonMaxSuppression and IOU below are ported from https://github.com/hollance/YOLO-CoreML-MPSNNGraph/blob/master/Common/Helpers.swift
     /**
@@ -67,9 +69,10 @@ public class PrePostProcessor {
                 new Comparator<Result>() {
                     @Override
                     public int compare(Result o1, Result o2) {
-                        return o1.score.compareTo(o2.score);
+                        return o2.score.compareTo(o1.score);
                     }
                 });
+        Log.d(TAG, "nonMaxSuppression: "+Arrays.asList(boxes.toArray()));
 
         ArrayList<Result> selected = new ArrayList<>();
         boolean[] active = new boolean[boxes.size()];
