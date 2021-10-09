@@ -7,6 +7,7 @@
     tools:context=".MainActivity">
 
     <ImageView
+
         android:id="@+id/mainActivity_iv"
         app:layout_constraintHeight_percent=".6"
         app:layout_constraintWidth_percent="1"

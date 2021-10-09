@@ -1,5 +1,6 @@
 package com.example.facemaskdetectionandroid;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 
@@ -7,9 +8,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.hardware.camera2.CameraManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -28,7 +31,6 @@ import org.pytorch.Module;
 import org.pytorch.PyTorchAndroid;
 import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -36,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -49,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private Tensor outputTensor;
     private DecimalFormat decimalFormat = new DecimalFormat("#.####");
+    private float mImgScaleX, mImgScaleY, mIvScaleX, mIvScaleY, mStartX, mStartY;
 
     // This One is Must for including binaries of vision
     static {
@@ -71,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         getIntClassHashMap();
 
         // get Image in Bitmap and Set to ImageView
-        imageBitmap = loadImage("5.jpg");
+        imageBitmap = loadImage("4.jpg");
         imageView.setImageBitmap(imageBitmap);
 
         try {
@@ -85,10 +89,14 @@ public class MainActivity extends AppCompatActivity {
         materialButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 imageBitmap = drawBBOX(detectMaskFromImage(), imageBitmap);
                 imageView.setImageBitmap(imageBitmap);
+
             }
         });
+
+
 
     }
 
@@ -104,6 +112,10 @@ public class MainActivity extends AppCompatActivity {
         for (Result result: results){
 
             if (result.score > 0.1f){
+
+                Log.d(TAG, "drawBBOX: "+result.toString());
+                Log.d(TAG, "drawBBOX:height "+bitmap.getHeight());
+                Log.d(TAG, "drawBBOX:width "+bitmap.getWidth());
 
                 Canvas canvas = new Canvas(bitmap);
                 // painting options for the rectangles
@@ -123,9 +135,15 @@ public class MainActivity extends AppCompatActivity {
                 textPaint.setTextSize(20);
 
                 String classLabel = intClassHashMap.get(result.classIndex);
-                String message = classLabel + " " + decimalFormat.format(result.score);
+                String message = classLabel ;// + " " + decimalFormat.format(result.score) + result.rect.toString();
 
-                canvas.drawText(message, result.rect.left, result.rect.top, textPaint);
+                canvas.drawText(message, (result.rect.left + result.rect.right)/2.0f, (result.rect.top+result.rect.bottom)/2.0f, textPaint);
+                imageView.setImageBitmap(bitmap);
+//                try {
+//                    TimeUnit.SECONDS.sleep(2);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
 
             }
         }
@@ -134,11 +152,12 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
     private ArrayList<Result> detectMaskFromImage() {
 
         final Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(imageBitmap,
-                new float[]{0.0f,0.0f,0.0f},
-                new float[]{1.0f, 1.0f, 1.0f});
+                PrePostProcessor.NO_MEAN_RGB,
+                PrePostProcessor.NO_STD_RGB);
 
         final Tensor[] outputTensor = mModule.forward(IValue.from(inputTensor)).toTensorList();
 
@@ -163,21 +182,23 @@ public class MainActivity extends AppCompatActivity {
             resultArrayList.add(result);
         }
 
-        ArrayList<Result> resultsNMS = PrePostProcessor.nonMaxSuppression(resultArrayList, 10, (float) 0.8);
 
-        return resultsNMS;
+
+//         ArrayList<Result> resultsNMS = PrePostProcessor.nonMaxSuppression(resultArrayList, 200, (float) 0.0);
+
+        return NMSmine.performNMS(resultArrayList, 0.000000000000000000001f);
     }
+
 
     private Bitmap loadImage(String imageFile){
         Bitmap bitmap = null;
         try {
-           bitmap  = BitmapFactory.decodeStream(getAssets().open(imageFile));
-           if (imageFile.contains(".png")){
-               bitmap= bitmap.copy(Bitmap.Config.ARGB_4444, true);
-            }
-           else{
-               bitmap= bitmap.copy(Bitmap.Config.RGB_565, true);
-           }
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inScaled = false;
+            options.inMutable = true;
+            bitmap  = BitmapFactory.decodeStream(getAssets().open(imageFile));
+            bitmap = bitmap.copy(Bitmap.Config.RGB_565, true);
+
 
         } catch (IOException e) {
             e.printStackTrace();
